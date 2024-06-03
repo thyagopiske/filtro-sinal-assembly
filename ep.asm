@@ -20,7 +20,9 @@ segment code
 	;inicializa mouse
 	mov ax, 0
 	int 33h
-
+	;para mostrar o mouse
+	mov ax, 1
+	int 33h
 	
 	mov		ax,0 
 	push		ax
