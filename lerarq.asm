@@ -51,11 +51,13 @@ fim:
 	mov dx, arquivo_array
 	int 21h
 
+	;transformar em inteiros
+	;EU JÁ SEI QUE SÃO 300 NUMEROS
+
+
 	;termina o programa
 	mov ah, 4Ch
 	int 21h
-
-
 
 segment dados
 	nomearquivo db 'sinalep1.txt'
