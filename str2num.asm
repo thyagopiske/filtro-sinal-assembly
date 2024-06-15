@@ -8,23 +8,17 @@ segment code
 
 	mov si, 0
 	mov di, 0
-
-	;DEBUG
-	; mov ax, num
-	; int 3;
-
-	l1:
-
-	mov al, byte[array_string + si]
+loopLeCaractere:
+  mov al, byte[array_string + si]
 
 	cmp al, '-'
 	je negativo
 
-	cmp al, 10
+	cmp al, 13
 	je fimNumero
 	
 	cmp al, '$'
-	je fim
+	je fimConversao
 
 	sub al, '0'
 	mov [num + di], al
@@ -33,12 +27,12 @@ segment code
 	; int 3;
 
 	inc si
-	jmp l1
+	jmp loopLeCaractere
 
 negativo:
 	mov byte[EhNegativo], 1
 	inc si
-	jmp l1
+	jmp loopLeCaractere
 
 fimNumero:
 	mov dx, di
@@ -61,7 +55,7 @@ multiplicaPor10:
 	mul bl
 	loop multiplicaPor10
 
-	mov [num + si], al ;??????????
+	mov [num + si], al
 
 	inc si
 	jmp praCadaDigito
@@ -96,21 +90,22 @@ salvaNumero:
 	mov di, 0
 	
 	pop si
-	inc si
-	jmp l1
+	; inc si
+	add si, 2
+	jmp loopLeCaractere
 
-fim:
+fimConversao:
 	int 3
 	mov ah, 4Ch
 	int 21h
 
 segment dados
-	array_string db '-100',10,'100',10,'$'
-	array_inteiros resb 300
-	indice_array_inteiros db 0
-	EhNegativo db 0
-	num db 0,0,0
+  array_string db '-100',13,10,'100',13,10,'$'
+  array_inteiros resb 300
+  indice_array_inteiros db 0
+  EhNegativo db 0
+  num db 0,0,0
 
 segment pilha stack
-	resb 64
+  resb 64
 topopilha:

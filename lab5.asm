@@ -23,48 +23,99 @@ segment code
 
 ;desenhar retas
 
-		; mov		byte[cor],branco_intenso	;antenas
-		; mov		ax,20
-		; push		ax
-		; mov		ax,400
-		; push		ax
-		; mov		ax,620
-		; push		ax
-		; mov		ax,400
-		; push		ax
-		; call		line
+		mov		byte[cor],branco_intenso	;antenas
+		mov		ax,20
+		push		ax
+		mov		ax,400
+		push		ax
+		mov		ax,620
+		push		ax
+		mov		ax,400
+		push		ax
+		call		line
 		
-		; mov		byte[cor],marrom	;antenas
-		; mov		ax,130
-		; push		ax
-		; mov		ax,270
-		; push		ax
-		; mov		ax,100
-		; push		ax
-		; mov		ax,300
-		; push		ax
-		; call		line
+		mov		byte[cor],marrom	;antenas
+		mov		ax,130
+		push		ax
+		mov		ax,270
+		push		ax
+		mov		ax,100
+		push		ax
+		mov		ax,300
+		push		ax
+		call		line
 		
-	mov		ax,0
-	push		ax
-	mov		ax,0
-	push		ax
-	mov		ax,0
-	push		ax
-	mov		ax,479
-	push		ax
-	call		line
+		mov		ax,130
+		push		ax
+		mov		ax,130
+		push		ax
+		mov		ax,100
+		push		ax
+		mov		ax,100
+		push		ax
+		call		line
 		
-	mov		ax,0
-	push		ax
-	mov		ax,0
-	push		ax
-	mov		ax,639
-	push		ax
-	mov		ax,0
-	push		ax
-	call		line
+		
+;desenha circulos 
+		mov		byte[cor],azul	;cabe�a
+		mov		ax,200
+		push		ax
+		mov		ax,200
+		push		ax
+		mov		ax,100
+		push		ax
+		call	circle
 
+		mov		byte[cor],verde	;corpo
+		mov		ax,450
+		push		ax
+		mov		ax,200
+		push		ax
+		mov		ax,190
+		push		ax
+		call	circle
+		
+		mov		ax,100	;circulos das antenas
+		push		ax
+		mov		ax,100
+		push		ax
+		mov		ax,10
+		push		ax
+		call	circle
+		
+		mov		ax,100
+		push		ax
+		mov		ax,300
+		push		ax
+		mov		ax,10
+		push		ax
+		call	circle
+		
+		mov		byte[cor],vermelho	;circulos vermelhos
+		mov		ax,500
+		push		ax
+		mov		ax,300
+		push		ax
+		mov		ax,50
+		push		ax
+		call	full_circle
+		
+		mov		ax,500
+		push		ax
+		mov		ax,100
+		push		ax
+		mov		ax,50
+		push		ax
+		call	full_circle
+		
+		mov		ax,350
+		push		ax
+		mov		ax,200
+		push		ax
+		mov		ax,50
+		push		ax
+		call	full_circle
+		
 
 ;escrever uma mensagem
 

@@ -6,8 +6,6 @@ segment code
 	mov ss, ax
 	mov sp, topopilha
 
-	;FALTA TRATAR ERRO
-
 	;abrir arquivo sinalep1.txt
 	mov ah, 3Dh
 	mov al, 0 ;modo de leitura
@@ -15,9 +13,9 @@ segment code
 	int 21h
 	mov [handle], ax
 
-	;ler arquivo7
+	;ler arquivo
 	mov si, 0
-le:
+leByte:
 	mov ah, 3Fh
 	mov bx, [handle]
 	mov cx, 1 ;quantidade de bytes a serem lidos
@@ -25,15 +23,15 @@ le:
 	int 21h
 
 	cmp ax, 0
-	je fim
+	je fimLeArq
 
 	mov ah, [buffer]
 	mov byte[arquivo_array + si], ah
 	inc si
 
-	jmp le
+	jmp leByte
 
-fim:
+fimLeArq:
 	int 3
 
 	;fecha o arquivo
@@ -41,19 +39,16 @@ fim:
 	mov bx, [handle]
 	int 21h
 
-	mov byte[arquivo_array + si], 10
-	inc si
 	mov byte[arquivo_array + si], 13
 	inc si
+	mov byte[arquivo_array + si], 10
+	inc si
+
 	mov byte[arquivo_array + si], '$'
 
 	mov ah, 9h
 	mov dx, arquivo_array
 	int 21h
-
-	;transformar em inteiros
-	;EU JÁ SEI QUE SÃO 300 NUMEROS
-
 
 	;termina o programa
 	mov ah, 4Ch
@@ -64,12 +59,6 @@ segment dados
 	handle dw 0
 	buffer resb 1
 	arquivo_array resb 2048
-	; buffer db 256 dup(0)
-	; handle dw ?
-	; bytesread dw ?
-	; byteswritten dw ?
-	; buffer2 db 256 dup(0)
-
 segment pilha stack
     resb 256
 topopilha:

@@ -148,6 +148,10 @@ primeira_iteracao:
 	mov byte[cor], branco
 	call escreve_menu_lateral
 
+	; le arquivo
+	call lerArquivo
+	; converte os números do arquivo para inteiros
+	call str2num
 
 check_mouse:
 	mov ax, 3
@@ -324,11 +328,193 @@ escreve_menu_lateral:
 	call escreve_histogramas
 	call escreve_sair
 	ret
+
+;***************************************************************************
+;
+;   				LER ARQUIVO
+;
+;***************************************************************************
+lerArquivo:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	;abrir arquivo sinalep1.txt
+	mov ah, 3Dh
+	mov al, 0 ;modo de leitura
+	mov dx, nomearquivo
+	int 21h
+	mov [handle], ax
+
+	;ler arquivo
+	mov si, 0
+leByte:
+	mov ah, 3Fh
+	mov bx, [handle]
+	mov cx, 1 ;quantidade de bytes a serem lidos
+	mov dx, buffer
+	int 21h
+
+	cmp ax, 0
+	je fimLeArq
+
+	mov ah, [buffer]
+	mov byte[arquivo_array + si], ah
+	inc si
+
+	jmp leByte
+
+fimLeArq:
+	;fecha o arquivo
+	mov ah, 3Eh
+	mov bx, [handle]
+	int 21h
+
+	mov byte[arquivo_array + si], 13
+	inc si
+	mov byte[arquivo_array + si], 10
+	inc si
+
+	;ver se leu o arquivo
+	; int 3
+
+	mov byte[arquivo_array + si], '$'
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				CONVERTER CARACTER ASCII PARA NÚMERO
+;
+;***************************************************************************
+str2num:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov si, 0
+	mov di, 0
+loopLeCaractere:
+  mov al, byte[arquivo_array + si]
+
+	cmp al, '-'
+	je negativo
+
+	cmp al, 13
+	je fimNumero
+	
+	cmp al, '$'
+	je fimConversao
+
+	sub al, '0'
+	mov [num + di], al
+	inc di
+	
+	; int 3;
+
+	inc si
+	jmp loopLeCaractere
+
+negativo:
+	mov byte[EhNegativo], 1
+	inc si
+	jmp loopLeCaractere
+
+fimNumero:
+	mov dx, di
+	;dx = quantidade de dígitos do número
+
+	push si
+	mov si, 0
+praCadaDigito:
+	mov al, [num + si]
+
+	;dx = vezes que tem q multiplicar o digito por 10
+	dec dx
+
+	cmp dx, 0
+	je soma ;(chegou no ultimo digito)
+
+	mov cx, dx
+multiplicaPor10:
+	mov bl, 10
+	mul bl
+	loop multiplicaPor10
+
+	mov [num + si], al
+
+	inc si
+	jmp praCadaDigito
+
+soma:
+	mov cx, di
+
+	mov al, 0
+lsoma:
+	mov bx, cx
+	dec bx
+
+	add al, [num + bx]
+	loop lsoma
+
+	cmp byte[EhNegativo], 0
+	je salvaNumero
+
+	neg al
+
+salvaNumero:
+  int 3
+
+	mov bx, 0 
+	mov bl, byte[indice_array_inteiros]
+	mov byte[array_inteiros + bx], al
+	inc bx
+	mov byte[indice_array_inteiros], bl
+	mov byte[EhNegativo], 0
+	
+
+	mov di, 0
+	
+	pop si
+	; inc si
+	add si, 2
+	jmp loopLeCaractere
+
+fimConversao:
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
 ;***************************************************************************
 ;
 ;   função cursor
 ;
 ; dh = linha (0-29) e  dl=coluna  (0-79)
+;***************************************************************************
 cursor:
 	pushf
 	push 	ax
@@ -848,25 +1034,6 @@ fim_line:
 segment data
 
 cor		db		branco_intenso
-
-;	I R G B COR
-;	0 0 0 0 preto
-;	0 0 0 1 azul
-;	0 0 1 0 verde
-;	0 0 1 1 cyan
-;	0 1 0 0 vermelho
-;	0 1 0 1 magenta
-;	0 1 1 0 marrom
-;	0 1 1 1 branco
-;	1 0 0 0 cinza
-;	1 0 0 1 azul claro
-;	1 0 1 0 verde claro
-;	1 0 1 1 cyan claro
-;	1 1 0 0 rosa
-;	1 1 0 1 magenta claro
-;	1 1 1 0 amarelo
-;	1 1 1 1 branco intenso
-
 preto		equ		0
 azul		equ		1
 verde		equ		2
@@ -900,8 +1067,16 @@ FIR3 db 'FIR3$'
 abrir db 'Abrir$'
 limite_horizontal equ 639
 limite_vertical equ 479
+nomearquivo db 'sinalep1.txt'
+handle dw 0
+buffer resb 1
+arquivo_array resb 2048
+array_inteiros resb 300
+indice_array_inteiros db 0
+EhNegativo db 0
+num db 0,0,0
 ;*************************************************************************
 segment stack stack
-    		resb 		512
+	resb 		512
 stacktop:
 
