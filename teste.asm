@@ -8,16 +8,18 @@ segment code
 	mov sp,topopilha
 
 	int 3
-	mov ax, [numeroFloat];
-	; Terminar o programa e voltar para o sistema operacional
+	mov ax, 0xff29
+	cwd
+	mov bx, 6
+	idiv bx
+; Terminar o programa e voltar para o sistema operacional
 fim:
 	mov ah,4ch
 	int 21h
 	
 segment dados
-	meuDado: dw 0x4fac
-	numeroNegativo: db 0x9C ;-100
-	numeroFloat: dd 0.1
+	menos100 db 9Ch
+	mais100 db 64h
 	
 segment minha_pilha stack
     resb 256

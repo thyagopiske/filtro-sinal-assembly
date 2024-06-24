@@ -1,4 +1,10 @@
 
+;***************************************************************************
+; AUTOR: THYAGO VIEIRA PISKE
+; MATRÍCULA: 2021100525
+;	SISTEMAS EMBARCADOS I (2024/01)
+;***************************************************************************
+
 segment code
 ..start:
 	mov ax,data
@@ -74,6 +80,8 @@ segment code
 	push		ax
 	call		line
 
+	call desenhaEixos
+
 	mov cx, 5
 	mov bx, 79
 menu_esquerda:
@@ -123,21 +131,6 @@ primeira_iteracao:
 	call		line
 
 
-; ;escrever uma mensagem
-; 	mov cx,14			;número de caracteres
-; 	mov bx,0
-; 	mov dh,0			;linha 0-29
-; 	mov dl,30			;coluna 0-79
-; 	mov	byte[cor],azul
-; l4:
-; 	call cursor
-; 	mov  al,[mens + bx]
-; 	call	caracter
-; 	inc  bx	;proximo caracter
-; 	inc	dl	;avanca a coluna
-; 	inc	byte [cor] ;mudar a cor para a seguinte
-; 	loop   l4
-
 	mov dh,27			;linha 0-29
 	mov dl,30			;coluna 0-79
 	call cursor
@@ -145,13 +138,13 @@ primeira_iteracao:
 	mov dx, nome
 	int 21h
 	
-	mov byte[cor], branco
 	call escreve_menu_lateral
 
-	; le arquivo
 	call lerArquivo
-	; converte os números do arquivo para inteiros
 	call str2num
+	call convFIR1
+	call convFIR2
+	call convFIR3
 
 check_mouse:
 	mov ax, 3
@@ -168,11 +161,11 @@ check_mouse:
 	cmp dx, 80
 	jl selecionar_abrir
 	cmp dx, 160
-	jl selecionar_FIR3
+	jl selecionar_FIR1
 	cmp dx, 240
 	jl selecionar_FIR2
 	cmp dx, 320
-	jl selecionar_FIR1
+	jl selecionar_FIR3
 	cmp dx, 400
 	jl selecionar_histogramas
 
@@ -183,6 +176,11 @@ selecionar_abrir:
 	call escreve_menu_lateral
 	mov byte[cor], amarelo
 	call escreve_abrir
+	
+	call apagaY
+	call desenhaSinalX
+	mov byte[filtroSelecionado], 0
+
 	jmp check_mouse
 
 selecionar_FIR3:
@@ -190,6 +188,11 @@ selecionar_FIR3:
 	call escreve_menu_lateral
 	mov byte[cor], amarelo
 	call escreve_FIR3
+
+	call apagaY
+	call desenhaSinalY3
+	mov byte[filtroSelecionado], 3
+
 	jmp check_mouse
 
 selecionar_FIR2:
@@ -197,6 +200,11 @@ selecionar_FIR2:
 	call escreve_menu_lateral
 	mov byte[cor], amarelo
 	call escreve_FIR2
+
+	call apagaY
+	call desenhaSinalY2
+	mov byte[filtroSelecionado], 2
+
 	jmp check_mouse
 
 selecionar_FIR1:
@@ -204,6 +212,11 @@ selecionar_FIR1:
 	call escreve_menu_lateral
 	mov byte[cor], amarelo
 	call escreve_FIR1
+
+	call apagaY
+	call desenhaSinalY1
+	mov byte[filtroSelecionado], 1
+
 	jmp check_mouse
 
 selecionar_histogramas:
@@ -266,7 +279,7 @@ lgramas:
 escreve_FIR1:
 	mov cx,4			;número de caracteres
 	mov bx,0
-	mov dh,17			;linha 0-29
+	mov dh,7			;linha 0-29
 	mov dl,2			;coluna 0-79
 lfir1:
 	call cursor
@@ -294,7 +307,7 @@ lfir2:
 escreve_FIR3:
 	mov cx,4			;número de caracteres
 	mov bx,0
-	mov dh,7			;linha 0-29
+	mov dh,17			;linha 0-29
 	mov dl,2			;coluna 0-79
 lfir3:
 	call cursor
@@ -481,15 +494,14 @@ lsoma:
 	neg al
 
 salvaNumero:
-  int 3
+  ; int 3
 
-	mov bx, 0 
-	mov bl, byte[indice_array_inteiros]
+	mov bx, [indice_array_inteiros]
 	mov byte[array_inteiros + bx], al
 	inc bx
-	mov byte[indice_array_inteiros], bl
+	mov [indice_array_inteiros], bx
 	mov byte[EhNegativo], 0
-	
+
 
 	mov di, 0
 	
@@ -509,6 +521,677 @@ fimConversao:
 	popf
 	ret
 
+;***************************************************************************
+;
+;   				CONVOLUÇÃO FIR1
+;
+;***************************************************************************
+convFIR1:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov ax, tamanhoX
+	add ax, tamanhoH1
+	dec ax
+
+	mov cx, ax
+
+	int 3
+	mov bx, y1 ;apenas para fins de debug
+loopCadaN:
+	push cx
+
+	mov ax, cx
+	dec ax
+	mov [n], ax
+
+	mov bx, [n]
+	mov byte[y1+bx], 0
+	mov word[acumulador], 0
+
+	mov cx, [n]
+	inc cx
+	; int 3
+	loopSomatorio:
+		;k (índice de x)
+		mov bx, cx
+		dec bx
+
+		; 0 <= k < tamanhoX
+		cmp bx, 0
+		jl skipLoopCadaN
+		cmp bx, tamanhoX
+		jge skipLoopCadaN
+
+		;n - k (índice de h)
+		mov dx, [n]
+		sub dx, bx
+
+		;0 <= n - k < tamanhoH
+		cmp dx, 0
+		jl skipLoopCadaN
+		cmp dx, tamanhoH1
+		jge skipLoopCadaN
+
+		; faz h[n-k]*x[k] e soma em y[n]
+		mov si, dx
+		mov ax, 0
+		mov al, byte[h1+si]
+
+		mov si, bx
+		mov bl, byte[array_inteiros+si]
+		imul bl
+
+		mov si, [n]
+		add [acumulador], ax
+
+		skipLoopCadaN:
+			dec cx
+			jnz loopSomatorio
+
+	mov ax, [acumulador]
+	cwd
+	mov bx, 6
+	idiv bx
+	mov [y1+si], al
+
+	pop cx
+	loop loopCadaN
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				CONVOLUÇÃO FIR2
+;
+;***************************************************************************
+convFIR2:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov ax, tamanhoX
+	add ax, tamanhoH2
+	dec ax
+
+	mov cx, ax
+
+	int 3
+	mov bx, y2 ;apenas para fins de debug
+loopCadaN2:
+	push cx
+
+	mov ax, cx
+	dec ax
+	mov [n], ax
+
+	mov bx, [n]
+	mov byte[y2+bx], 0
+	mov word[acumulador], 0
+
+	mov cx, [n]
+	inc cx
+	; int 3
+	loopSomatorio2:
+		;k (índice de x)
+		mov bx, cx
+		dec bx
+
+		; 0 <= k < tamanhoX
+		cmp bx, 0
+		jl skipLoopCadaN2
+		cmp bx, tamanhoX
+		jge skipLoopCadaN2
+
+		;n - k (índice de h)
+		mov dx, [n]
+		sub dx, bx
+
+		;0 <= n - k < tamanhoH
+		cmp dx, 0
+		jl skipLoopCadaN2
+		cmp dx, tamanhoH2
+		jge skipLoopCadaN2
+
+		; faz h[n-k]*x[k] e soma em y[n]
+		mov si, dx
+		mov ax, 0
+		mov al, byte[h2+si]
+
+		mov si, bx
+		mov bl, byte[array_inteiros+si]
+		imul bl
+
+		mov si, [n]
+		add [acumulador], ax
+
+		skipLoopCadaN2:
+			dec cx
+			jnz loopSomatorio2
+
+	mov ax, [acumulador]
+	cwd
+	mov bx, 11
+	idiv bx
+	mov [y2+si], al
+
+	pop cx
+	loop loopCadaN2
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				CONVOLUÇÃO FIR3
+;
+;***************************************************************************
+convFIR3:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov ax, tamanhoX
+	add ax, tamanhoH3
+	dec ax
+
+	mov cx, ax
+
+	int 3
+	mov bx, y3 ;apenas para fins de debug
+loopCadaN3:
+	push cx
+
+	mov ax, cx
+	dec ax
+	mov [n], ax
+
+	mov bx, [n]
+	mov byte[y3+bx], 0
+	mov word[acumulador], 0
+
+	mov cx, [n]
+	inc cx
+	; int 3
+	loopSomatorio3:
+		;k (índice de x)
+		mov bx, cx
+		dec bx
+
+		; 0 <= k < tamanhoX
+		cmp bx, 0
+		jl skipLoopCadaN3
+		cmp bx, tamanhoX
+		jge skipLoopCadaN3
+
+		;n - k (índice de h)
+		mov dx, [n]
+		sub dx, bx
+
+		;0 <= n - k < tamanhoH
+		cmp dx, 0
+		jl skipLoopCadaN3
+		cmp dx, tamanhoH3
+		jge skipLoopCadaN3
+
+		; faz h[n-k]*x[k] e soma em y[n]
+		mov si, dx
+		mov ax, 0
+		mov al, byte[h3+si]
+
+		mov si, bx
+		mov bl, byte[array_inteiros+si]
+		imul bl
+
+		mov si, [n]
+		add [acumulador], ax
+
+		skipLoopCadaN3:
+			dec cx
+			jnz loopSomatorio3
+
+	mov ax, [acumulador]
+	cwd
+	mov bx, 18
+	idiv bx
+	mov [y3+si], al
+
+	pop cx
+	loop loopCadaN3
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				DESENHA EIXOS X
+;
+;***************************************************************************
+desenhaEixos:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov byte[cor], cinza
+	mov		ax,64
+	push		ax
+	mov		ax,eixoSinalX
+	push		ax
+	mov		ax,limite_horizontal
+	push		ax
+	mov		ax,eixoSinalX
+	push		ax
+	call		line
+	mov byte[cor], branco
+
+	mov byte[cor], cinza
+	mov		ax,64
+	push		ax
+	mov		ax,eixoSinalY
+	push		ax
+	mov		ax,limite_horizontal
+	push		ax
+	mov		ax,eixoSinalY
+	push		ax
+	call		line
+	mov byte[cor], branco
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				DESENHA SINAL X
+;
+;***************************************************************************
+desenhaSinalX:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov byte[cor], verde_claro
+	mov cx, 300
+desenhaX:
+	mov si, cx
+	dec si
+	mov ax, 65
+	add ax, cx
+	push ax
+	; int 3
+	mov al, byte[array_inteiros + si]
+	cbw
+	add ax, eixoSinalX
+	push ax
+	call plot_xy
+	loop desenhaX
+	mov byte[cor], branco
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				DESENHA SINAL Y1 (FIR1)
+;
+;***************************************************************************
+desenhaSinalY1:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov byte[cor], verde_claro
+	mov cx, 305
+desenhaY1:
+	mov si, cx
+	dec si
+	mov ax, 65
+	add ax, cx
+	push ax
+	; int 3
+	mov al, byte[y1 + si]
+	int 3
+	cbw
+	add ax, eixoSinalY
+	push ax
+	call plot_xy
+	loop desenhaY1
+	mov byte[cor], branco
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+;***************************************************************************
+;
+;   				APAGA SINAL Y1 (FIR1)
+;
+;***************************************************************************
+apagaSinalY1:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov byte[cor], preto
+	mov cx, 305
+apagaY1:
+	mov si, cx
+	dec si
+	mov ax, 65
+	add ax, cx
+	push ax
+	; int 3
+	mov al, byte[y1 + si]
+	int 3
+	cbw
+	add ax, eixoSinalY
+	push ax
+	call plot_xy
+	loop apagaY1
+	mov byte[cor], branco
+	call desenhaEixos
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				DESENHA SINAL Y2 (FIR2)
+;
+;***************************************************************************
+desenhaSinalY2:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov byte[cor], verde_claro
+	mov cx, 309
+desenhaY2:
+	mov si, cx
+	dec si
+	mov ax, 65
+	add ax, cx
+	push ax
+	; int 3
+	mov al, byte[y2 + si]
+	int 3
+	cbw
+	add ax, eixoSinalY
+	push ax
+	call plot_xy
+	loop desenhaY2
+	mov byte[cor], branco
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				APAGA SINAL Y2 (FIR2)
+;
+;***************************************************************************
+apagaSinalY2:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov byte[cor], preto
+	mov cx, 309
+apagaY2:
+	mov si, cx
+	dec si
+	mov ax, 65
+	add ax, cx
+	push ax
+	; int 3
+	mov al, byte[y2 + si]
+	int 3
+	cbw
+	add ax, eixoSinalY
+	push ax
+	call plot_xy
+	loop apagaY2
+	mov byte[cor], branco
+	call desenhaEixos
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				DESENHA SINAL Y3 (FIR3)
+;
+;***************************************************************************
+desenhaSinalY3:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov byte[cor], verde_claro
+	mov cx, 318
+desenhaY3:
+	mov si, cx
+	dec si
+	mov ax, 65
+	add ax, cx
+	push ax
+	; int 3
+	mov al, byte[y3 + si]
+	int 3
+	cbw
+	add ax, eixoSinalY
+	push ax
+	call plot_xy
+	loop desenhaY3
+	mov byte[cor], branco
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				APAGA SINAL Y3 (FIR3)
+;
+;***************************************************************************
+apagaSinalY3:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	mov byte[cor], preto
+	mov cx, 318
+apagaY3:
+	mov si, cx
+	dec si
+	mov ax, 65
+	add ax, cx
+	push ax
+	; int 3
+	mov al, byte[y3 + si]
+	int 3
+	cbw
+	add ax, eixoSinalY
+	push ax
+	call plot_xy
+	loop apagaY3
+	mov byte[cor], branco
+	call desenhaEixos
+
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
+
+;***************************************************************************
+;
+;   				APAGA SINAL FILTRADO
+;
+;***************************************************************************
+apagaY:
+	pushf
+	push 	ax
+	push 	bx
+	push	cx
+	push	dx
+	push	si
+	push	di
+	push	bp
+
+	cmp byte[filtroSelecionado], 3
+	je apaga3
+	cmp byte[filtroSelecionado], 2
+	je apaga2
+	cmp byte[filtroSelecionado], 1
+	je apaga1
+apaga3:
+	call apagaSinalY3
+	jmp fimApagaY
+apaga2:
+	call apagaSinalY2
+	jmp fimApagaY
+apaga1:
+	call apagaSinalY1
+	jmp fimApagaY
+
+fimApagaY:
+	pop		bp
+	pop		di
+	pop		si
+	pop		dx
+	pop		cx
+	pop		bx
+	pop		ax
+	popf
+	ret
 ;***************************************************************************
 ;
 ;   função cursor
@@ -1050,6 +1733,8 @@ rosa		equ		12
 magenta_claro	equ		13
 amarelo		equ		14
 branco_intenso	equ		15
+eixoSinalX equ 345
+eixoSinalY equ 140
 
 modo_anterior	db		0
 linha   	dw  		0
@@ -1067,14 +1752,27 @@ FIR3 db 'FIR3$'
 abrir db 'Abrir$'
 limite_horizontal equ 639
 limite_vertical equ 479
-nomearquivo db 'sinalep1.txt'
+nomearquivo db 'sinalep1.txt', 0
 handle dw 0
 buffer resb 1
 arquivo_array resb 2048
 array_inteiros resb 300
-indice_array_inteiros db 0
+indice_array_inteiros dw 0
 EhNegativo db 0
 num db 0,0,0
+h1 db 1,1,1,1,1,1
+h2 db 1,1,1,1,1,1,1,1,1,1,1
+h3 db 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+y1 resb 305
+y2 resb 309
+y3 resb 317
+n dw 0
+tamanhoX equ 300
+tamanhoH1 equ 6
+tamanhoH2 equ 10
+tamanhoH3 equ 18
+acumulador dw 0
+filtroSelecionado db 0
 ;*************************************************************************
 segment stack stack
 	resb 		512

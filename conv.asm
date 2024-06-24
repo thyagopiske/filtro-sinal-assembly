@@ -12,8 +12,8 @@ segment code
 
 	mov cx, ax
 
-	mov bx, y ;apenas para fins de debug
 	int 3
+	mov bx, y ;apenas para fins de debug
 l1:
 	push cx
 
@@ -21,9 +21,9 @@ l1:
 	dec ax
 	mov [n], ax
 
-	; só precisaria disso se em dados eu fiz y resb 0 (mas isso nem funciona n sei pq)
-	; mov bx, [n]
-	; mov byte[y+bx], 0
+	mov bx, [n]
+	mov byte[y+bx], 0
+	mov word[acumulador], 0
 
 	mov cx, [n]
 	inc cx
@@ -53,18 +53,35 @@ l1:
 
 		; faz h[n-k]*x[k] e soma em y[n]
 		mov si, dx
+		mov ax, 0
 		mov al, byte[h+si]
 
 		mov si, bx
 		mov bl, byte[x+si]
-		mul bx
+		imul bl ;N ERA PRA SER IMUL?
 
 		mov si, [n]
-		add byte[y+si], al
+		; n posso acumular direto assim, pq o somatorio pode ser de 16bits, antes de dividir por 6
+		; add byte[y+si], al
+		add [acumulador], ax
+		; EXEMPLO: add [acumulador], al
 
 		skipl2:
 			dec cx
 			jnz l2
+
+	mov ax, [acumulador]
+; 	cmp ah, 00h
+; 	jne NoSignExtend
+	cwd
+; NoSignExtend:
+	; mov dx, 0
+	; mov al, [y+si]
+	; cbw
+	mov bx, 6
+	idiv bx
+	int 3
+	mov [y+si], al
 
 	pop cx
 	loop l1
@@ -73,23 +90,16 @@ l1:
 	mov ax, 4c00h
 	int 21h
 
-; indiceMenorQueZero:
-; 	loop l2
-; 	ret
-
 segment dados
 ; xn = [1 5 10 4 5]
 ; hn = [2 1 4 7]
-	x db 1,5,10,4,5
-	h db 2,1,4,7
-	; y resb 0 assim n funciona n sei pq
-	y db 0,0,0,0,0,0,0,0
-	n db 0
-	k db 0
-	kmin db 0
-	kmax db 0
+	x db 1,5,-100,-120,5
+	h db 1,1,1,1
+	y resb 8
+	n dw 0
 	tamanhoX equ 5
 	tamanhoH equ 4
+	acumulador dw 0
 
 segment pilha stack
 	resb 256

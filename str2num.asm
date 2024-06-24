@@ -102,7 +102,7 @@ fimConversao:
 segment dados
   array_string db '-100',13,10,'100',13,10,'$'
   array_inteiros resb 300
-  indice_array_inteiros db 0
+  indice_array_inteiros dw 0
   EhNegativo db 0
   num db 0,0,0
 
